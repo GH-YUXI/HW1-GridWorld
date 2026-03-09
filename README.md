@@ -13,6 +13,8 @@
 GitHub Pages: https://github.com/GH-YUXI/HW1-GridWorld
 
 ## Local Run (Flask version)
+python_version=3.14.3
+
 pip install -r requirements.txt
 
 python app.py
