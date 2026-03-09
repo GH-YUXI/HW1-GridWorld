@@ -10,10 +10,11 @@
 ---
 
 ## Live Demo
-GitHub Pages: https://GH-YUXI.github.io/HW1-GridWorld/
+GitHub Pages: https://github.com/GH-YUXI/HW1-GridWorld
 
 ## Local Run (Flask version)
 pip install -r requirements.txt
+
 python app.py
 
 Open Browser: http://127.0.0.1:5000
