@@ -6,6 +6,8 @@
 ## Live Demo
 GitHub Pages: https://GH-YUXI.github.io/HW1-GridWorld/
 
+![Homepage Screenshot](homepage.png)
+
 ## 特色
 
 - 使用 Value Iteration 計算最佳狀態價值 `V(s)`
