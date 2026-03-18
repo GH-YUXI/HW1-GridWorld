@@ -11,7 +11,7 @@
     <header class="hero">
       <h1>n x n 網格地圖與 Value Iteration</h1>
       <p>
-        先設定起點、終點與障礙物，再執行 Value Iteration，直接在頁面上顯示每個狀態的最佳策略與狀態價值 V(s)。
+        先設定起點、終點與障礙物，再執行 Value Iteration，直接在頁面上顯示每個狀態的狀態價值 V(s)，並隨機標記一條最佳策略路徑。
       </p>
     </header>
 
@@ -62,6 +62,7 @@
       <div><span class="legend-box end"></span>終點</div>
       <div><span class="legend-box obstacle"></span>障礙物</div>
       <div><span class="legend-box empty"></span>一般格子</div>
+      <div><span class="legend-box path"></span>隨機最佳路徑</div>
     </section>
 
     <section class="panel action-panel">
@@ -80,7 +81,8 @@
         <li>設定步驟獎勵 Reward 與折扣因子 γ。</li>
         <li>切換模式後，點擊格子設定起點、終點、障礙物。</li>
         <li>障礙物數量最多為 n-2，可少於 n-2。</li>
-        <li>按下按鈕後，格子會顯示最佳策略箭頭與 V(s)。</li>
+        <li>按下按鈕後，格子會顯示各狀態的 V(s)。</li>
+        <li>完成計算後，系統會從最佳動作中隨機挑選一條通往終點的最佳路徑，並用另一種顏色標記經過格子。</li>
       </ol>
       <p id="message" class="message">請先建立網格並完成設定。</p>
     </section>

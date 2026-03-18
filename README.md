@@ -1,5 +1,7 @@
 # GridWorld Value Iteration (GitHub Pages 版)
 
+這是一個靜態版 GridWorld 專案
+
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![License](https://img.shields.io/badge/Usage-Educational-green)
 
@@ -11,7 +13,7 @@ GitHub Pages: https://GH-YUXI.github.io/HW1-GridWorld/
 ## 特色
 
 - 使用 Value Iteration 計算最佳狀態價值 `V(s)`
-- 根據收斂後的 `V(s)` 萃取最佳策略箭頭
+- 根據收斂後的 `V(s)` 從最佳策略中隨機選擇一個路徑
 - 可設定：
   - `n x n` Grid（5 到 9）
   - 起點 / 終點 / 障礙物

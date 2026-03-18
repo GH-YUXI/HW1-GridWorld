@@ -1,8 +1,8 @@
 const ACTIONS = {
-  U: { dr: -1, dc: 0, arrow: '↑' },
-  D: { dr: 1, dc: 0, arrow: '↓' },
-  L: { dr: 0, dc: -1, arrow: '←' },
-  R: { dr: 0, dc: 1, arrow: '→' },
+  U: { dr: -1, dc: 0, arrow: '↑', label: '上' },
+  D: { dr: 1, dc: 0, arrow: '↓', label: '下' },
+  L: { dr: 0, dc: -1, arrow: '←', label: '左' },
+  R: { dr: 0, dc: 1, arrow: '→', label: '右' },
 };
 
 const MODE_LABELS = {
@@ -15,6 +15,7 @@ const MODE_LABELS = {
 let n = 5;
 let currentMode = 'start';
 let gridState = [];
+let lastResults = null;
 
 const gridEl = document.getElementById('grid');
 const messageEl = document.getElementById('message');
@@ -49,6 +50,10 @@ function obstacleLimit() {
   return n - 2;
 }
 
+function clearResults() {
+  lastResults = null;
+}
+
 function setMessage(text, kind = '') {
   messageEl.textContent = text;
   messageEl.className = `message${kind ? ` ${kind}` : ''}`;
@@ -64,16 +69,18 @@ function updateInfo() {
   infoModeEl.textContent = MODE_LABELS[currentMode];
 }
 
-function renderGrid(results = null) {
+function renderGrid(results = lastResults) {
   gridEl.innerHTML = '';
   gridEl.style.gridTemplateColumns = `repeat(${n}, minmax(0, 1fr))`;
 
   for (let r = 0; r < n; r += 1) {
     for (let c = 0; c < n; c += 1) {
       const cellType = gridState[r][c];
+      const key = stateKey(r, c);
       const cell = document.createElement('button');
       cell.type = 'button';
-      cell.className = `cell ${cellType}`;
+      const isPathCell = Boolean(results && Array.isArray(results.pathKeys) && results.pathKeys.includes(key));
+      cell.className = `cell ${cellType}${isPathCell ? ' path-highlight' : ''}`;
       cell.dataset.row = String(r);
       cell.dataset.col = String(c);
 
@@ -88,18 +95,17 @@ function renderGrid(results = null) {
       cell.appendChild(label);
 
       if (results && cellType !== 'obstacle') {
-        const key = stateKey(r, c);
-        if (cellType !== 'end' && results.arrows[key]) {
-          const arrow = document.createElement('div');
-          arrow.className = 'cell-arrow';
-          arrow.textContent = results.arrows[key];
-          cell.appendChild(arrow);
+        if (isPathCell) {
+          const pathBadge = document.createElement('div');
+          pathBadge.className = 'cell-path-badge';
+          pathBadge.textContent = '隨機最佳路徑';
+          cell.appendChild(pathBadge);
         }
 
         if (Object.prototype.hasOwnProperty.call(results.values, key)) {
           const value = document.createElement('div');
           value.className = 'cell-value';
-          value.textContent = results.values[key].toFixed(2);
+          value.textContent = `V(s)=${results.values[key].toFixed(2)}`;
           cell.appendChild(value);
         }
       }
@@ -125,6 +131,8 @@ function clearSingle(type) {
 function onCellClick(event) {
   const r = Number(event.currentTarget.dataset.row);
   const c = Number(event.currentTarget.dataset.col);
+
+  clearResults();
 
   if (currentMode === 'start') {
     clearSingle('start');
@@ -192,6 +200,111 @@ function pickRandom(items) {
   return items[Math.floor(Math.random() * items.length)];
 }
 
+function findCell(grid, type) {
+  for (let r = 0; r < n; r += 1) {
+    for (let c = 0; c < n; c += 1) {
+      if (grid[r][c] === type) {
+        return [r, c];
+      }
+    }
+  }
+  return null;
+}
+
+function getOptimalActions(grid, values, r, c, gamma, stepReward) {
+  let bestValue = Number.NEGATIVE_INFINITY;
+  let bestActions = [];
+
+  Object.keys(ACTIONS).forEach((action) => {
+    const [nr, nc] = nextState(grid, r, c, action);
+    const nextKey = stateKey(nr, nc);
+    const reward = grid[nr][nc] === 'end' ? 0 : stepReward;
+    const candidate = reward + gamma * values[nextKey];
+
+    if (candidate > bestValue + 1e-10) {
+      bestValue = candidate;
+      bestActions = [action];
+    } else if (Math.abs(candidate - bestValue) < 1e-10) {
+      bestActions.push(action);
+    }
+  });
+
+  return bestActions;
+}
+
+function buildRandomOptimalPath(grid, values, gamma, stepReward) {
+  const start = findCell(grid, 'start');
+  if (!start) {
+    return { pathKeys: [], pathActions: {}, reachedGoal: false };
+  }
+
+  const pathKeys = [];
+  const pathActions = {};
+  const visited = new Set();
+  let [r, c] = start;
+  const maxSteps = n * n * 4;
+  let reachedGoal = false;
+
+  for (let step = 0; step < maxSteps; step += 1) {
+    const key = stateKey(r, c);
+    pathKeys.push(key);
+
+    if (grid[r][c] === 'end') {
+      reachedGoal = true;
+      break;
+    }
+
+    visited.add(key);
+    const optimalActions = getOptimalActions(grid, values, r, c, gamma, stepReward);
+    if (!optimalActions.length) {
+      break;
+    }
+
+    const unvisitedActions = optimalActions.filter((action) => {
+      const [nr, nc] = nextState(grid, r, c, action);
+      return !visited.has(stateKey(nr, nc));
+    });
+
+    const candidateActions = unvisitedActions.length ? unvisitedActions : optimalActions;
+    const chosenAction = pickRandom(candidateActions);
+    pathActions[key] = chosenAction;
+
+    const [nr, nc] = nextState(grid, r, c, chosenAction);
+    if (nr === r && nc === c && visited.has(key)) {
+      break;
+    }
+    r = nr;
+    c = nc;
+  }
+
+  return { pathKeys, pathActions, reachedGoal };
+}
+
+function deriveBestPolicy(grid, values, gamma, stepReward) {
+  const bestPolicy = {};
+  const bestArrows = {};
+  const bestActionNames = {};
+
+  for (let r = 0; r < n; r += 1) {
+    for (let c = 0; c < n; c += 1) {
+      const cellType = grid[r][c];
+      const key = stateKey(r, c);
+
+      if (cellType === 'obstacle' || cellType === 'end') {
+        continue;
+      }
+
+      const bestActions = getOptimalActions(grid, values, r, c, gamma, stepReward);
+      const chosenAction = pickRandom(bestActions);
+      bestPolicy[key] = chosenAction;
+      bestArrows[key] = ACTIONS[chosenAction].arrow;
+      bestActionNames[key] = ACTIONS[chosenAction].label;
+    }
+  }
+
+  return { bestPolicy, bestArrows, bestActionNames };
+}
+
 function valueIteration(grid, gamma = 0.9, stepReward = -1, theta = 1e-4, maxIterations = 1000) {
   const values = {};
 
@@ -248,63 +361,38 @@ function valueIteration(grid, gamma = 0.9, stepReward = -1, theta = 1e-4, maxIte
     }
   }
 
-  const policy = {};
-  const arrows = {};
-
-  for (let r = 0; r < n; r += 1) {
-    for (let c = 0; c < n; c += 1) {
-      const cellType = grid[r][c];
-      const key = stateKey(r, c);
-
-      if (cellType === 'obstacle' || cellType === 'end') {
-        continue;
-      }
-
-      let bestValue = Number.NEGATIVE_INFINITY;
-      let bestActions = [];
-
-      Object.keys(ACTIONS).forEach((action) => {
-        const [nr, nc] = nextState(grid, r, c, action);
-        const nextKey = stateKey(nr, nc);
-        const reward = grid[nr][nc] === 'end' ? 0 : stepReward;
-        const candidate = reward + gamma * values[nextKey];
-
-        if (candidate > bestValue + 1e-10) {
-          bestValue = candidate;
-          bestActions = [action];
-        } else if (Math.abs(candidate - bestValue) < 1e-10) {
-          bestActions.push(action);
-        }
-      });
-
-      const chosenAction = pickRandom(bestActions);
-      policy[key] = chosenAction;
-      arrows[key] = ACTIONS[chosenAction].arrow;
-    }
-  }
-
   const roundedValues = {};
   Object.entries(values).forEach(([key, value]) => {
     roundedValues[key] = Math.round(value * 100) / 100;
   });
 
-  return { values: roundedValues, policy, arrows, iterations };
+  const { bestPolicy, bestArrows, bestActionNames } = deriveBestPolicy(grid, values, gamma, stepReward);
+  const { pathKeys, pathActions, reachedGoal } = buildRandomOptimalPath(grid, values, gamma, stepReward);
+
+  return {
+    values: roundedValues,
+    bestPolicy,
+    bestArrows,
+    bestActionNames,
+    pathKeys,
+    pathActions,
+    reachedGoal,
+    iterations,
+  };
 }
 
 function loadDemoMap() {
   n = 5;
   gridSizeEl.value = '5';
   gridState = makeEmptyGrid(n);
-
   gridState[0][0] = 'start';
   gridState[4][4] = 'end';
   gridState[1][1] = 'obstacle';
   gridState[1][3] = 'obstacle';
   gridState[3][1] = 'obstacle';
-
   rewardInputEl.value = '-1';
   gammaInputEl.value = '0.9';
-
+  clearResults();
   renderGrid();
   setMessage('已載入示範地圖，可以直接執行 Value Iteration。');
 }
@@ -320,12 +408,14 @@ function setMode(mode) {
 document.getElementById('buildGridBtn').addEventListener('click', () => {
   n = Number(gridSizeEl.value);
   gridState = makeEmptyGrid(n);
+  clearResults();
   renderGrid();
   setMessage('新網格已建立。');
 });
 
 document.getElementById('resetGridBtn').addEventListener('click', () => {
   gridState = makeEmptyGrid(n);
+  clearResults();
   renderGrid();
   setMessage('地圖設定已清空。');
 });
@@ -334,9 +424,10 @@ document.getElementById('runBtn').addEventListener('click', () => {
   try {
     const { gamma, reward } = validateInputs();
     const result = valueIteration(cloneGrid(gridState), gamma, reward);
+    lastResults = result;
     renderGrid(result);
     setMessage(
-      `已完成 Value Iteration，共迭代 ${result.iterations} 次。Reward=${reward}，γ=${gamma}。`,
+      `已完成 Value Iteration，共迭代 ${result.iterations} 次，並隨機標記一條最佳策略路徑${result.reachedGoal ? '（可到達終點）' : '（已標記目前可延伸的最佳路徑）'}。Reward=${reward}，γ=${gamma}。`,
       'success',
     );
   } catch (error) {
@@ -345,10 +436,8 @@ document.getElementById('runBtn').addEventListener('click', () => {
 });
 
 document.getElementById('demoBtn').addEventListener('click', loadDemoMap);
-
 rewardInputEl.addEventListener('input', updateInfo);
 gammaInputEl.addEventListener('input', updateInfo);
-
 document.querySelectorAll('.mode-btn').forEach((button) => {
   button.addEventListener('click', () => setMode(button.dataset.mode));
 });

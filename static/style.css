@@ -10,6 +10,9 @@
   --start: #dcfce7;
   --end: #fee2e2;
   --obstacle: #cbd5e1;
+  --policy: #7c3aed;
+  --path: #fef3c7;
+  --path-border: #f59e0b;
   --shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
@@ -139,6 +142,7 @@ button.secondary {
 .legend-box.end { background: var(--end); }
 .legend-box.obstacle { background: var(--obstacle); }
 .legend-box.empty { background: #fff; }
+.legend-box.path { background: var(--path); border-color: var(--path-border); }
 
 .grid {
   display: grid;
@@ -150,14 +154,17 @@ button.secondary {
   position: relative;
   border: 1px solid var(--line);
   border-radius: 12px;
-  min-height: 92px;
+  min-height: 116px;
   background: #fff;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   user-select: none;
   cursor: pointer;
   overflow: hidden;
+  padding: 22px 8px 28px;
 }
 
 .cell.start { background: var(--start); }
@@ -165,6 +172,20 @@ button.secondary {
 .cell.obstacle {
   background: var(--obstacle);
   color: #334155;
+}
+
+.cell.path-highlight {
+  background: var(--path);
+  border-color: var(--path-border);
+  box-shadow: inset 0 0 0 2px rgba(245, 158, 11, 0.45);
+}
+
+.cell.start.path-highlight {
+  background: linear-gradient(0deg, rgba(254, 243, 199, 0.95), rgba(254, 243, 199, 0.95)), var(--start);
+}
+
+.cell.end.path-highlight {
+  background: linear-gradient(0deg, rgba(254, 243, 199, 0.95), rgba(254, 243, 199, 0.95)), var(--end);
 }
 
 .cell-label {
@@ -176,19 +197,23 @@ button.secondary {
   opacity: 0.85;
 }
 
-.cell-arrow {
-  font-size: 28px;
+.cell-path-badge {
+  font-size: 11px;
   font-weight: 700;
-  line-height: 1;
+  color: #92400e;
+  background: rgba(245, 158, 11, 0.16);
+  border: 1px solid rgba(245, 158, 11, 0.32);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
 .cell-value {
   position: absolute;
-  right: 10px;
+  right: 8px;
   bottom: 8px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.82);
   padding: 2px 6px;
   border-radius: 999px;
 }
@@ -218,10 +243,8 @@ ol {
   }
 
   .cell {
-    min-height: 76px;
+    min-height: 104px;
+    padding: 20px 6px 26px;
   }
 
-  .cell-arrow {
-    font-size: 24px;
-  }
-}
+    
