@@ -7,6 +7,7 @@
 
 ## Live Demo
 GitHub Pages: https://GH-YUXI.github.io/HW1-GridWorld/
+Vercel Web: https://hw-1-grid-world-eight.vercel.app/
 
 ![Homepage Screenshot](homepage.png)
 
